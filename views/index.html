@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Socket.io Chat</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding-bottom: 3rem;
+    }
+
+    #messages {
+      list-style: none;
+      padding: 0;
+    }
+
+    #messages li {
+      padding: 8px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    #form {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      padding: 10px;
+      background: #eee;
+    }
+
+    #input {
+      flex: 1;
+      padding: 10px;
+    }
+
+    button {
+      padding: 10px;
+      margin-left: 5px;
+    }
+  </style>
+</head>
+
+<body>
+
+<ul id="messages"></ul>
+
+<form id="form">
+  <input id="input" autocomplete="off" />
+  <button type="submit">Send</button>
+  <button type="button" id="toggle">Disconnect</button>
+</form>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const socket = io();
+
+  const form = document.getElementById("form");
+  const input = document.getElementById("input");
+  const messages = document.getElementById("messages");
+  const toggleBtn = document.getElementById("toggle");
+
+  let lastSeenMessageId = 0;
+
+  function addMessage(text) {
+    const li = document.createElement("li");
+    li.textContent = text;
+    messages.appendChild(li);
+    window.scrollTo(0, document.body.scrollHeight);
+  }
+
+  socket.on("chat message", (msg) => {
+    lastSeenMessageId = msg.id;
+    addMessage(msg.text);
+  });
+
+  socket.on("missed messages", (msgs) => {
+    msgs.forEach((msg) => {
+      lastSeenMessageId = msg.id;
+      addMessage(msg.text);
+    });
+  });
+
+  socket.on("connect", () => {
+    socket.emit("get missed messages", lastSeenMessageId);
+    toggleBtn.innerText = "Disconnect";
+  });
+
+  socket.on("disconnect", () => {
+    toggleBtn.innerText = "Connect";
+  });
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+
+    if (!socket.connected) {
+      alert("You are disconnected");
+      return;
+    }
+
+    if (input.value) {
+      socket.emit("chat message", input.value);
+      input.value = "";
+    }
+  });
+
+  toggleBtn.addEventListener("click", () => {
+    if (socket.connected) {
+      socket.disconnect();
+    } else {
+      socket.connect();
+    }
+  });
+</script>
+
+</body>
+</html>
